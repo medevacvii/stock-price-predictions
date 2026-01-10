@@ -96,10 +96,6 @@ st.caption(
     "This is not financial advice."
 )
 
-# UI refresh
-time.sleep(5)
-st.rerun()
-
 # Stock selector (searchable by default)
 symbol = st.selectbox(
     "Select a stock symbol",
@@ -175,3 +171,13 @@ st.caption(
     "Projection is a simple extrapolation based on recent intraday trends. "
     "Accuracy decreases rapidly with horizon."
 )
+
+# -----------------------------
+# Auto-refresh (every 5 seconds)
+# -----------------------------
+if "last_refresh" not in st.session_state:
+    st.session_state.last_refresh = time.time()
+
+if time.time() - st.session_state.last_refresh >= 5:
+    st.session_state.last_refresh = time.time()
+    st.experimental_rerun()
