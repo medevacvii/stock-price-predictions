@@ -103,6 +103,13 @@ def get_last_trading_day(now_et: datetime) -> datetime:
 
     return last_day
 
+def safe_rerun():
+    """Version-safe Streamlit rerun."""
+    if hasattr(st, "rerun"):
+        st.rerun()
+    else:
+        st.experimental_rerun()
+
 # -----------------------------
 # Streamlit App
 # -----------------------------
@@ -204,4 +211,4 @@ if "last_refresh" not in st.session_state:
 
 if time.time() - st.session_state.last_refresh >= 5:
     st.session_state.last_refresh = time.time()
-    st.experimental_rerun()
+    safe_rerun()
