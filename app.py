@@ -189,13 +189,25 @@ if not projection_df.empty:
         line=dict(dash="dash")
     ))
 
-# "Now" marker
+session_end_ts = df["timestamp"].iloc[-1].to_pydatetime()
+
+# Vertical line (NO annotation here)
 fig.add_vline(
-    x=df["timestamp"].iloc[-1].to_pydatetime(),
+    x=session_end_ts,
     line_dash="dot",
-    line_color="gray",
-    annotation_text="Session End",
-    annotation_position="top"
+    line_color="gray"
+)
+
+# Explicit annotation (safe path)
+fig.add_annotation(
+    x=session_end_ts,
+    y=1,
+    yref="paper",
+    text="Session End",
+    showarrow=False,
+    xanchor="left",
+    yanchor="bottom",
+    font=dict(color="gray")
 )
 
 fig.update_layout(
