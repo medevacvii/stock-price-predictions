@@ -6,6 +6,7 @@ import numpy as np
 from datetime import datetime, time as dt_time
 import pytz
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # -----------------------------
 # Configuration
@@ -180,25 +181,56 @@ if not is_market_open(now_et):
 # -----------------------------
 # Plot
 # -----------------------------
-fig = go.Figure()
+fig = make_subplots(
+    rows=2,
+    cols=1,
+    shared_xaxes=True,
+    vertical_spacing=0.05,
+    row_heights=[0.7, 0.3],
+    subplot_titles=[
+        f"{symbol} — Intraday Price ({session_start:%b %d, %Y})",
+        "Volume"
+    ]
+)
 
 # Actual prices
-fig.add_trace(go.Scatter(
-    x=df["timestamp"],
-    y=df["Close"],
-    mode="lines",
-    name="Actual Price"
-))
+fig.add_trace(
+    go.Scatter(
+        x=df["timestamp"],
+        y=df["Close"],
+        mode="lines",
+        name="Actual Price"
+    ),
+    row=1,
+    col=1
+)
+
+# Volume bars
+fig.add_trace(
+    go.Bar(
+        x=df["timestamp"],
+        y=df["Volume"],
+        name="Volume",
+        marker_color="rgba(150,150,150,0.6)"
+    ),
+    row=2,
+    col=1
+)
 
 # Projection
 if not projection_df.empty:
-    fig.add_trace(go.Scatter(
-        x=projection_df["timestamp"],
-        y=projection_df["Close"],
-        mode="lines",
-        name="Projected Price",
-        line=dict(dash="dash")
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=projection_df["timestamp"],
+            y=projection_df["Close"],
+            mode="lines",
+            name="Projected Price",
+            line=dict(dash="dash", color="orange")
+        ),
+        row=1,
+        col=1
+    )
+
 
 session_end_ts = df["timestamp"].iloc[-1].to_pydatetime()
 
@@ -206,7 +238,9 @@ session_end_ts = df["timestamp"].iloc[-1].to_pydatetime()
 fig.add_vline(
     x=session_end_ts,
     line_dash="dot",
-    line_color="gray"
+    line_color="gray",
+    row=1,
+    col=1
 )
 
 # Explicit annotation (safe path)
@@ -230,14 +264,14 @@ session_end = df["timestamp"].iloc[0].replace(
 )
 
 fig.update_layout(
-    title=f"{symbol} — Intraday Price ({session_start:%b %d, %Y})",
-    xaxis_title="Time (ET)",
-    yaxis_title="Price ($)",
     hovermode="x unified",
     xaxis=dict(
         range=[session_start, session_end],
         tickformat="%H:%M<br>%b %d, %Y"
-    )
+    ),
+    yaxis_title="Price ($)",
+    yaxis2_title="Volume",
+    showlegend=True
 )
 
 st.plotly_chart(fig, use_container_width=True)
