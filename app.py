@@ -132,6 +132,7 @@ trading_day = get_last_trading_day(now_et)
 
 # Load data
 df = load_intraday_data(symbol, trading_day)
+session_date = df["timestamp"].dt.date.iloc[0]
 
 if df.empty:
     st.warning("No intraday data available.")
@@ -192,7 +193,13 @@ fig.update_layout(
     title=f"{symbol} — Intraday Price & Projection",
     xaxis_title="Time (ET)",
     yaxis_title="Price ($)",
-    hovermode="x unified"
+    hovermode="x unified",
+    xaxis=dict(
+        range=[
+            pd.Timestamp(session_date, tz=NYSE_TZ) + pd.Timedelta(hours=9, minutes=30),
+            pd.Timestamp(session_date, tz=NYSE_TZ) + pd.Timedelta(hours=16)
+        ]
+    )
 )
 
 st.plotly_chart(fig, use_container_width=True)
