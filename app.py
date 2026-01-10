@@ -16,8 +16,8 @@ UI_REFRESH_MS = 5000    # UI refresh every 5s
 ROLLING_WINDOW = 15     # minutes for slope/volatility
 
 NYSE_TZ = pytz.timezone("US/Eastern")
-MARKET_OPEN = time(9, 30)
-MARKET_CLOSE = time(16, 0)
+MARKET_OPEN = dt_time(9, 30)
+MARKET_CLOSE = dt_time(16, 0)
 
 # Example symbol universe (expand later)
 SYMBOLS = sorted([
