@@ -221,7 +221,7 @@ session_end = df["timestamp"].iloc[0].replace(
 )
 
 fig.update_layout(
-    title=f"{symbol} — Intraday Price & Projection",
+    title=f"{symbol} — Intraday Price ({session_start:%b %d, %Y})",
     xaxis_title="Time (ET)",
     yaxis_title="Price ($)",
     hovermode="x unified",
@@ -240,11 +240,12 @@ st.caption(
 )
 
 # -----------------------------
-# Auto-refresh (every 5 seconds)
+# Auto-refresh (only when market is open)
 # -----------------------------
-if "last_refresh" not in st.session_state:
-    st.session_state.last_refresh = time.time()
+if is_market_open(now_et):
+    if "last_refresh" not in st.session_state:
+        st.session_state.last_refresh = time.time()
 
-if time.time() - st.session_state.last_refresh >= 5:
-    st.session_state.last_refresh = time.time()
-    safe_rerun()
+    if time.time() - st.session_state.last_refresh >= 5:
+        st.session_state.last_refresh = time.time()
+        safe_rerun()
