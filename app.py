@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
+import time
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -97,7 +97,8 @@ st.caption(
 )
 
 # UI refresh
-st_autorefresh(interval=UI_REFRESH_MS, key="refresh")
+time.sleep(5)
+st.rerun()
 
 # Stock selector (searchable by default)
 symbol = st.selectbox(
