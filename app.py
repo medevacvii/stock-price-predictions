@@ -181,6 +181,14 @@ if not is_market_open(now_et):
 # -----------------------------
 # Plot
 # -----------------------------
+# Anchor session boundaries explicitly (CRITICAL)
+session_start = df["timestamp"].iloc[0].replace(
+    hour=9, minute=30, second=0
+)
+session_end = df["timestamp"].iloc[0].replace(
+    hour=16, minute=0, second=0
+)
+
 fig = make_subplots(
     rows=2,
     cols=1,
@@ -253,14 +261,6 @@ fig.add_annotation(
     xanchor="left",
     yanchor="bottom",
     font=dict(color="gray")
-)
-
-# Anchor session boundaries explicitly (CRITICAL)
-session_start = df["timestamp"].iloc[0].replace(
-    hour=9, minute=30, second=0
-)
-session_end = df["timestamp"].iloc[0].replace(
-    hour=16, minute=0, second=0
 )
 
 fig.update_layout(
