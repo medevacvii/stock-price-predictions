@@ -194,7 +194,7 @@ fig = make_subplots(
     cols=1,
     shared_xaxes=True,
     vertical_spacing=0.05,
-    row_heights=[0.7, 0.3],
+    row_heights=[0.65, 0.35]
     subplot_titles=[
         f"{symbol} — Intraday Price ({session_start:%b %d, %Y})",
         "Volume"
@@ -264,6 +264,7 @@ fig.add_annotation(
 )
 
 fig.update_layout(
+    height=700,
     hovermode="x unified",
     xaxis=dict(
         range=[session_start, session_end],
