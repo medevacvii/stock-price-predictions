@@ -60,6 +60,13 @@ def load_intraday_data(symbol: str, trading_day: datetime) -> pd.DataFrame:
 
     df = df.reset_index()
     df.rename(columns={"Datetime": "timestamp"}, inplace=True)
+
+    # 🔑 CRITICAL FIX: localize timestamps to NYSE time
+    if df["timestamp"].dt.tz is None:
+        df["timestamp"] = df["timestamp"].dt.tz_localize(NYSE_TZ)
+    else:
+        df["timestamp"] = df["timestamp"].dt.tz_convert(NYSE_TZ)
+
     return df
 
 
@@ -186,7 +193,9 @@ if not projection_df.empty:
 fig.add_vline(
     x=df["timestamp"].iloc[-1],
     line_dash="dot",
-    line_color="gray"
+    line_color="gray",
+    annotation_text="Session End",
+    annotation_position="top"
 )
 
 fig.update_layout(
@@ -196,8 +205,8 @@ fig.update_layout(
     hovermode="x unified",
     xaxis=dict(
         range=[
-            pd.Timestamp(session_date, tz=NYSE_TZ) + pd.Timedelta(hours=9, minutes=30),
-            pd.Timestamp(session_date, tz=NYSE_TZ) + pd.Timedelta(hours=16)
+            df["timestamp"].iloc[0],
+            df["timestamp"].iloc[-1]
         ]
     )
 )
