@@ -44,13 +44,20 @@ def minutes_until_close(now_et: datetime) -> int:
 
 
 @st.cache_data(ttl=DATA_TTL_SECONDS)
-def load_intraday_data(symbol: str) -> pd.DataFrame:
+def load_intraday_data(symbol: str, trading_day: datetime) -> pd.DataFrame:
+    start = trading_day.replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    end = start + pd.Timedelta(days=1)
+
     df = yf.download(
         symbol,
-        period="1d",
+        start=start,
+        end=end,
         interval="1m",
         progress=False
     )
+
     df = df.reset_index()
     df.rename(columns={"Datetime": "timestamp"}, inplace=True)
     return df
@@ -84,6 +91,17 @@ def project_prices(df: pd.DataFrame, minutes_forward: int) -> pd.DataFrame:
         "Close": projected_prices
     })
 
+def get_last_trading_day(now_et: datetime) -> datetime:
+    """
+    Returns the most recent weekday (Mon–Fri).
+    Does NOT account for market holidays yet (acceptable for v1).
+    """
+    last_day = now_et
+
+    while last_day.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
+        last_day -= pd.Timedelta(days=1)
+
+    return last_day
 
 # -----------------------------
 # Streamlit App
@@ -103,9 +121,10 @@ symbol = st.selectbox(
 )
 
 now_et = datetime.now(NYSE_TZ)
+trading_day = get_last_trading_day(now_et)
 
 # Load data
-df = load_intraday_data(symbol)
+df = load_intraday_data(symbol, trading_day)
 
 if df.empty:
     st.warning("No intraday data available.")
@@ -126,6 +145,11 @@ projection_df = pd.DataFrame()
 if is_market_open(now_et):
     mins_left = minutes_until_close(now_et)
     projection_df = project_prices(df, mins_left)
+
+if not is_market_open(now_et):
+    st.info(
+        "Market is currently closed. Showing data from the last trading day."
+    )
 
 # -----------------------------
 # Plot
