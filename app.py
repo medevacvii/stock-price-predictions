@@ -47,7 +47,7 @@ def minutes_until_close(now_et: datetime) -> int:
 def load_intraday_data(symbol: str) -> pd.DataFrame:
     df = yf.download(
         symbol,
-        period="7d",        # wider window
+        period="7d",
         interval="1m",
         progress=False,
         auto_adjust=False
@@ -56,16 +56,16 @@ def load_intraday_data(symbol: str) -> pd.DataFrame:
     df = df.reset_index()
     df.rename(columns={"Datetime": "timestamp"}, inplace=True)
 
-    # Normalize timezone
     if df["timestamp"].dt.tz is None:
         df["timestamp"] = df["timestamp"].dt.tz_localize(NYSE_TZ)
     else:
         df["timestamp"] = df["timestamp"].dt.tz_convert(NYSE_TZ)
 
-    # 🔑 CRITICAL: derive the last available trading date from data
-    last_trading_date = df["timestamp"].dt.date.max()
+    # 🔑 FLATTEN yfinance MultiIndex columns
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
 
-    # Filter to that date
+    last_trading_date = df["timestamp"].dt.date.max()
     df = df[df["timestamp"].dt.date == last_trading_date]
 
     return df
