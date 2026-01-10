@@ -3,7 +3,7 @@ import time
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from datetime import datetime, time
+from datetime import datetime, time as dt_time
 import pytz
 import plotly.graph_objects as go
 
