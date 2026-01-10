@@ -212,27 +212,22 @@ fig.add_annotation(
     font=dict(color="gray")
 )
 
+# Anchor session boundaries explicitly (CRITICAL)
+session_start = df["timestamp"].iloc[0].replace(
+    hour=9, minute=30, second=0
+)
+session_end = df["timestamp"].iloc[0].replace(
+    hour=16, minute=0, second=0
+)
+
 fig.update_layout(
     title=f"{symbol} — Intraday Price & Projection",
     xaxis_title="Time (ET)",
     yaxis_title="Price ($)",
     hovermode="x unified",
-    session_start = df["timestamp"].iloc[0].replace(
-        hour=9, minute=30, second=0
-    )
-    session_end = df["timestamp"].iloc[0].replace(
-        hour=16, minute=0, second=0
-    )
-
-    fig.update_layout(
-        title=f"{symbol} — Intraday Price & Projection",
-        xaxis_title="Time (ET)",
-        yaxis_title="Price ($)",
-        hovermode="x unified",
-        xaxis=dict(
-            range=[session_start, session_end],
-            tickformat="%H:%M<br>%b %d, %Y"
-        )
+    xaxis=dict(
+        range=[session_start, session_end],
+        tickformat="%H:%M<br>%b %d, %Y"
     )
 )
 
