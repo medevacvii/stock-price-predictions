@@ -191,7 +191,7 @@ if not projection_df.empty:
 
 # "Now" marker
 fig.add_vline(
-    x=df["timestamp"].iloc[-1],
+    x=df["timestamp"].iloc[-1].to_pydatetime(),
     line_dash="dot",
     line_color="gray",
     annotation_text="Session End",
