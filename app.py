@@ -219,7 +219,7 @@ fig.add_trace(
         x=df["timestamp"],
         y=df["Volume"],
         name="Volume",
-        marker_color="rgba(150,150,150,0.6)"
+        marker_color="rgba(150,150,150,0.35)"
     ),
     row=2,
     col=1
