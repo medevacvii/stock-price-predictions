@@ -135,7 +135,9 @@ symbol = st.selectbox(
 )
 
 now_et = datetime.now(NYSE_TZ)
-trading_day = get_last_trading_day(now_et)
+trading_day = get_last_trading_day(now_et).replace(
+    hour=0, minute=0, second=0, microsecond=0
+)
 
 # Load data
 df = load_intraday_data(symbol, trading_day)
@@ -215,11 +217,22 @@ fig.update_layout(
     xaxis_title="Time (ET)",
     yaxis_title="Price ($)",
     hovermode="x unified",
-    xaxis=dict(
-        range=[
-            df["timestamp"].iloc[0],
-            df["timestamp"].iloc[-1]
-        ]
+    session_start = df["timestamp"].iloc[0].replace(
+        hour=9, minute=30, second=0
+    )
+    session_end = df["timestamp"].iloc[0].replace(
+        hour=16, minute=0, second=0
+    )
+
+    fig.update_layout(
+        title=f"{symbol} — Intraday Price & Projection",
+        xaxis_title="Time (ET)",
+        yaxis_title="Price ($)",
+        hovermode="x unified",
+        xaxis=dict(
+            range=[session_start, session_end],
+            tickformat="%H:%M<br>%b %d, %Y"
+        )
     )
 )
 
