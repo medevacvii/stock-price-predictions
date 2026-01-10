@@ -45,15 +45,10 @@ def minutes_until_close(now_et: datetime) -> int:
 
 @st.cache_data(ttl=DATA_TTL_SECONDS)
 def load_intraday_data(symbol: str, trading_day: datetime) -> pd.DataFrame:
-    start = trading_day.replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
-    end = start + pd.Timedelta(days=1)
-
+    # Pull multiple days to ensure full intraday coverage
     df = yf.download(
         symbol,
-        start=start,
-        end=end,
+        period="5d",
         interval="1m",
         progress=False
     )
@@ -61,11 +56,15 @@ def load_intraday_data(symbol: str, trading_day: datetime) -> pd.DataFrame:
     df = df.reset_index()
     df.rename(columns={"Datetime": "timestamp"}, inplace=True)
 
-    # 🔑 CRITICAL FIX: localize timestamps to NYSE time
+    # Normalize timezone
     if df["timestamp"].dt.tz is None:
         df["timestamp"] = df["timestamp"].dt.tz_localize(NYSE_TZ)
     else:
         df["timestamp"] = df["timestamp"].dt.tz_convert(NYSE_TZ)
+
+    # 🔑 Filter to the last trading day explicitly
+    trading_date = trading_day.date()
+    df = df[df["timestamp"].dt.date == trading_date]
 
     return df
 
