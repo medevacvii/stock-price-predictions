@@ -142,6 +142,14 @@ trading_day = get_last_trading_day(now_et).replace(
 
 # Load data
 df = load_intraday_data(symbol)
+
+st.write(
+    "Row count:", len(df),
+    "Date values:", df["timestamp"].dt.date.unique(),
+    df.head(),
+    df.tail()
+)
+
 session_date = df["timestamp"].dt.date.iloc[0]
 
 if df.empty:
