@@ -111,8 +111,8 @@ if df.empty:
     st.warning("No intraday data available.")
     st.stop()
 
-current_price = df["Close"].iloc[-1]
-open_price = df["Close"].iloc[0]
+current_price = float(df["Close"].iloc[-1])
+open_price = float(df["Close"].iloc[0])
 pct_change = (current_price - open_price) / open_price * 100
 
 # Metrics
