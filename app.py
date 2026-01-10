@@ -44,13 +44,13 @@ def minutes_until_close(now_et: datetime) -> int:
 
 
 @st.cache_data(ttl=DATA_TTL_SECONDS)
-def load_intraday_data(symbol: str, trading_day: datetime) -> pd.DataFrame:
-    # Pull multiple days to ensure full intraday coverage
+def load_intraday_data(symbol: str) -> pd.DataFrame:
     df = yf.download(
         symbol,
-        period="5d",
+        period="7d",        # wider window
         interval="1m",
-        progress=False
+        progress=False,
+        auto_adjust=False
     )
 
     df = df.reset_index()
@@ -62,9 +62,11 @@ def load_intraday_data(symbol: str, trading_day: datetime) -> pd.DataFrame:
     else:
         df["timestamp"] = df["timestamp"].dt.tz_convert(NYSE_TZ)
 
-    # 🔑 Filter to the last trading day explicitly
-    trading_date = trading_day.date()
-    df = df[df["timestamp"].dt.date == trading_date]
+    # 🔑 CRITICAL: derive the last available trading date from data
+    last_trading_date = df["timestamp"].dt.date.max()
+
+    # Filter to that date
+    df = df[df["timestamp"].dt.date == last_trading_date]
 
     return df
 
@@ -139,7 +141,7 @@ trading_day = get_last_trading_day(now_et).replace(
 )
 
 # Load data
-df = load_intraday_data(symbol, trading_day)
+df = load_intraday_data(symbol)
 session_date = df["timestamp"].dt.date.iloc[0]
 
 if df.empty:
