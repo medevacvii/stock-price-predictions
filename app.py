@@ -194,7 +194,7 @@ fig = make_subplots(
     cols=1,
     shared_xaxes=True,
     vertical_spacing=0.05,
-    row_heights=[0.65, 0.35],
+    row_heights=[0.60, 0.40],
     subplot_titles=[
         f"{symbol} — Intraday Price ({session_start:%b %d, %Y})",
         "Volume"
