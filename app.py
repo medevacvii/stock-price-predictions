@@ -27,6 +27,42 @@ SYMBOLS = sorted([
     "NVDA", "TSLA", "AMD", "NFLX", "INTC"
 ])
 
+if "symbols" not in st.session_state:
+    st.session_state.symbols = []
+
+col_add, col_clear = st.columns([1, 1])
+
+with col_add:
+    if st.button("Add ticker"):
+        if not new_symbol:
+            st.warning("Enter a ticker symbol.")
+        elif new_symbol in st.session_state.symbols:
+            st.warning("Ticker already added.")
+        elif len(st.session_state.symbols) >= 5:
+            st.warning("You can compare up to 5 stocks.")
+        else:
+            st.session_state.symbols.append(new_symbol)
+
+with col_clear:
+    if st.button("Clear all"):
+        st.session_state.symbols = []
+
+if st.session_state.symbols:
+    st.markdown("### Selected stocks")
+
+    for sym in st.session_state.symbols.copy():
+        col_sym, col_remove = st.columns([4, 1])
+
+        with col_sym:
+            st.write(sym)
+
+        with col_remove:
+            if st.button("❌", key=f"remove_{sym}"):
+                st.session_state.symbols.remove(sym)
+                st.rerun()
+
+
+
 # -----------------------------
 # Helpers
 # -----------------------------
@@ -151,8 +187,24 @@ trading_day = get_last_trading_day(now_et).replace(
     hour=0, minute=0, second=0, microsecond=0
 )
 
+if not st.session_state.symbols:
+    st.info("Add at least one stock to begin comparison.")
+    st.stop()
+
 # Load data
-df = load_intraday_data(symbol)
+data = {}
+
+for sym in st.session_state.symbols:
+    try:
+        df = load_intraday_data(sym)
+        if not df.empty:
+            data[sym] = df
+    except Exception:
+        st.warning(f"Could not load data for {sym}")
+
+if not data:
+    st.error("No valid stock data loaded.")
+    st.stop()
 
 st.write(
     "Row count:", len(df),
@@ -212,16 +264,17 @@ fig = make_subplots(
 )
 
 # Actual prices
-fig.add_trace(
-    go.Scatter(
-        x=df["timestamp"],
-        y=df["Close"],
-        mode="lines",
-        name="Actual Price"
-    ),
-    row=1,
-    col=1
-)
+for sym, df in data.items():
+    fig.add_trace(
+        go.Scatter(
+            x=df["timestamp"],
+            y=df["Close"],
+            mode="lines",
+            name=sym
+        ),
+        row=1,
+        col=1
+    )
 
 # Volume bars
 fig.add_trace(
