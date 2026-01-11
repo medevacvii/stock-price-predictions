@@ -138,6 +138,11 @@ symbol = st.selectbox(
     placeholder="Type to search (e.g. TSLA, AAPL)"
 )
 
+# 🔑 HARD STOP until a symbol is chosen
+if symbol is None:
+    st.info("Start typing to search for a stock symbol.")
+    st.stop()
+
 now_et = datetime.now(NYSE_TZ)
 trading_day = get_last_trading_day(now_et).replace(
     hour=0, minute=0, second=0, microsecond=0
