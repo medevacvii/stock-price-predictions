@@ -133,7 +133,9 @@ st.caption(
 # Stock selector (searchable by default)
 symbol = st.selectbox(
     "Select a stock symbol",
-    options=SYMBOLS
+    options=SYMBOLS,
+    index=None,
+    placeholder="Type to search (e.g. TSLA, AAPL)"
 )
 
 now_et = datetime.now(NYSE_TZ)
