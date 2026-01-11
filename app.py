@@ -7,6 +7,7 @@ from datetime import datetime, time as dt_time
 import pytz
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import re
 
 # -----------------------------
 # Configuration
@@ -131,16 +132,18 @@ st.caption(
 )
 
 # Stock selector (searchable by default)
-symbol = st.selectbox(
-    "Select a stock symbol",
-    options=SYMBOLS,
-    index=None,
-    placeholder="Type to search (e.g. TSLA, AAPL)"
-)
+symbol = st.text_input(
+    "Enter a stock symbol",
+    placeholder="e.g. TSLA, AAPL, NVDA"
+).upper().strip()
 
 # 🔑 HARD STOP until a symbol is chosen
 if symbol is None:
     st.info("Start typing to search for a stock symbol.")
+    st.stop()
+
+if not re.fullmatch(r"[A-Z.\-]{1,10}", symbol):
+    st.error("Invalid ticker format.")
     st.stop()
 
 now_et = datetime.now(NYSE_TZ)
