@@ -9,63 +9,26 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import re
 
-# -----------------------------
+# =====================================================
 # Configuration
-# -----------------------------
-MAX_TICKERS = 1          # v1: single ticker
-DATA_TTL_SECONDS = 30   # yfinance refresh interval
-UI_REFRESH_MS = 5000    # UI refresh every 5s
-ROLLING_WINDOW = 15     # minutes for slope/volatility
+# =====================================================
+DATA_TTL_SECONDS = 30
+ROLLING_WINDOW = 15
+MAX_SYMBOLS = 5
 
 NYSE_TZ = pytz.timezone("US/Eastern")
 MARKET_OPEN = dt_time(9, 30)
 MARKET_CLOSE = dt_time(16, 0)
 
-# Example symbol universe (expand later)
-SYMBOLS = sorted([
-    "AAPL", "MSFT", "GOOGL", "AMZN", "META",
-    "NVDA", "TSLA", "AMD", "NFLX", "INTC"
-])
-
+# =====================================================
+# Session State
+# =====================================================
 if "symbols" not in st.session_state:
     st.session_state.symbols = []
 
-col_add, col_clear = st.columns([1, 1])
-
-with col_add:
-    if st.button("Add ticker"):
-        if not new_symbol:
-            st.warning("Enter a ticker symbol.")
-        elif new_symbol in st.session_state.symbols:
-            st.warning("Ticker already added.")
-        elif len(st.session_state.symbols) >= 5:
-            st.warning("You can compare up to 5 stocks.")
-        else:
-            st.session_state.symbols.append(new_symbol)
-
-with col_clear:
-    if st.button("Clear all"):
-        st.session_state.symbols = []
-
-if st.session_state.symbols:
-    st.markdown("### Selected stocks")
-
-    for sym in st.session_state.symbols.copy():
-        col_sym, col_remove = st.columns([4, 1])
-
-        with col_sym:
-            st.write(sym)
-
-        with col_remove:
-            if st.button("❌", key=f"remove_{sym}"):
-                st.session_state.symbols.remove(sym)
-                st.rerun()
-
-
-
-# -----------------------------
-# Helpers
-# -----------------------------
+# =====================================================
+# Helper Functions
+# =====================================================
 def is_market_open(now_et: datetime) -> bool:
     return MARKET_OPEN <= now_et.time() <= MARKET_CLOSE
 
@@ -77,8 +40,7 @@ def minutes_until_close(now_et: datetime) -> int:
         second=0,
         microsecond=0
     )
-    delta = close_dt - now_et
-    return max(int(delta.total_seconds() // 60), 0)
+    return max(int((close_dt - now_et).total_seconds() // 60), 0)
 
 
 @st.cache_data(ttl=DATA_TTL_SECONDS)
@@ -91,6 +53,9 @@ def load_intraday_data(symbol: str) -> pd.DataFrame:
         auto_adjust=False
     )
 
+    if df.empty:
+        return df
+
     df = df.reset_index()
     df.rename(columns={"Datetime": "timestamp"}, inplace=True)
 
@@ -99,7 +64,6 @@ def load_intraday_data(symbol: str) -> pd.DataFrame:
     else:
         df["timestamp"] = df["timestamp"].dt.tz_convert(NYSE_TZ)
 
-    # 🔑 FLATTEN yfinance MultiIndex columns
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
@@ -110,10 +74,6 @@ def load_intraday_data(symbol: str) -> pd.DataFrame:
 
 
 def project_prices(df: pd.DataFrame, minutes_forward: int) -> pd.DataFrame:
-    """
-    Simple intraday projection using recent slope.
-    This is intentionally lightweight and explainable.
-    """
     recent = df.tail(ROLLING_WINDOW)
     if len(recent) < 2:
         return pd.DataFrame()
@@ -137,28 +97,16 @@ def project_prices(df: pd.DataFrame, minutes_forward: int) -> pd.DataFrame:
         "Close": projected_prices
     })
 
-def get_last_trading_day(now_et: datetime) -> datetime:
-    """
-    Returns the most recent weekday (Mon–Fri).
-    Does NOT account for market holidays yet (acceptable for v1).
-    """
-    last_day = now_et
-
-    while last_day.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
-        last_day -= pd.Timedelta(days=1)
-
-    return last_day
 
 def safe_rerun():
-    """Version-safe Streamlit rerun."""
     if hasattr(st, "rerun"):
         st.rerun()
     else:
         st.experimental_rerun()
 
-# -----------------------------
+# =====================================================
 # Streamlit App
-# -----------------------------
+# =====================================================
 st.set_page_config(page_title="Intraday Stock Projection", layout="wide")
 
 st.title("Intraday Stock Price Projection (Demo)")
@@ -167,31 +115,58 @@ st.caption(
     "This is not financial advice."
 )
 
-# Stock selector (searchable by default)
-symbol = st.text_input(
-    "Enter a stock symbol",
+# -----------------------------------------------------
+# Add Ticker Input (Search Bar)
+# -----------------------------------------------------
+new_symbol = st.text_input(
+    "Add a stock ticker (up to 5)",
     placeholder="e.g. TSLA, AAPL, NVDA"
 ).upper().strip()
 
-# 🔑 HARD STOP until a symbol is chosen
-if symbol is None:
-    st.info("Start typing to search for a stock symbol.")
-    st.stop()
+col_add, col_clear = st.columns([1, 1])
 
-if not re.fullmatch(r"[A-Z.\-]{1,10}", symbol):
-    st.error("Invalid ticker format.")
-    st.stop()
+with col_add:
+    if st.button("Add ticker"):
+        if not new_symbol:
+            st.warning("Enter a ticker symbol.")
+        elif not re.fullmatch(r"[A-Z.\-]{1,10}", new_symbol):
+            st.error("Invalid ticker format.")
+        elif new_symbol in st.session_state.symbols:
+            st.warning("Ticker already added.")
+        elif len(st.session_state.symbols) >= MAX_SYMBOLS:
+            st.warning("You can compare up to 5 stocks.")
+        else:
+            st.session_state.symbols.append(new_symbol)
+            safe_rerun()
 
-now_et = datetime.now(NYSE_TZ)
-trading_day = get_last_trading_day(now_et).replace(
-    hour=0, minute=0, second=0, microsecond=0
-)
+with col_clear:
+    if st.button("Clear all"):
+        st.session_state.symbols = []
+        safe_rerun()
 
+# -----------------------------------------------------
+# Selected Symbols
+# -----------------------------------------------------
 if not st.session_state.symbols:
     st.info("Add at least one stock to begin comparison.")
     st.stop()
 
-# Load data
+st.markdown("### Selected stocks")
+
+for sym in st.session_state.symbols.copy():
+    col_sym, col_remove = st.columns([4, 1])
+
+    with col_sym:
+        st.write(sym)
+
+    with col_remove:
+        if st.button("❌", key=f"remove_{sym}"):
+            st.session_state.symbols.remove(sym)
+            safe_rerun()
+
+# =====================================================
+# Load Data
+# =====================================================
 data = {}
 
 for sym in st.session_state.symbols:
@@ -206,48 +181,17 @@ if not data:
     st.error("No valid stock data loaded.")
     st.stop()
 
-st.write(
-    "Row count:", len(df),
-    "Date values:", df["timestamp"].dt.date.unique(),
-    df.head(),
-    df.tail()
-)
+now_et = datetime.now(NYSE_TZ)
 
-session_date = df["timestamp"].dt.date.iloc[0]
+# =====================================================
+# Plot Setup
+# =====================================================
+first_df = next(iter(data.values()))
 
-if df.empty:
-    st.warning("No intraday data available.")
-    st.stop()
-
-current_price = float(df["Close"].iloc[-1])
-open_price = float(df["Close"].iloc[0])
-pct_change = (current_price - open_price) / open_price * 100
-
-# Metrics
-col1, col2, col3 = st.columns(3)
-col1.metric("Current Price", f"${current_price:.2f}")
-col2.metric("Today's Change", f"{pct_change:.2f}%")
-col3.metric("Market Status", "OPEN" if is_market_open(now_et) else "CLOSED")
-
-# Projection
-projection_df = pd.DataFrame()
-if is_market_open(now_et):
-    mins_left = minutes_until_close(now_et)
-    projection_df = project_prices(df, mins_left)
-
-if not is_market_open(now_et):
-    st.info(
-        "Market is currently closed. Showing data from the last trading day."
-    )
-
-# -----------------------------
-# Plot
-# -----------------------------
-# Anchor session boundaries explicitly (CRITICAL)
-session_start = df["timestamp"].iloc[0].replace(
+session_start = first_df["timestamp"].iloc[0].replace(
     hour=9, minute=30, second=0
 )
-session_end = df["timestamp"].iloc[0].replace(
+session_end = first_df["timestamp"].iloc[0].replace(
     hour=16, minute=0, second=0
 )
 
@@ -256,14 +200,16 @@ fig = make_subplots(
     cols=1,
     shared_xaxes=True,
     vertical_spacing=0.05,
-    row_heights=[0.60, 0.40],
+    row_heights=[0.65, 0.35],
     subplot_titles=[
-        f"{symbol} — Intraday Price ({session_start:%b %d, %Y})",
+        "Intraday Price",
         "Volume"
     ]
 )
 
-# Actual prices
+# -----------------------------------------------------
+# Price Lines
+# -----------------------------------------------------
 for sym, df in data.items():
     fig.add_trace(
         go.Scatter(
@@ -276,11 +222,13 @@ for sym, df in data.items():
         col=1
     )
 
-# Volume bars
+# -----------------------------------------------------
+# Volume Bars (using first symbol for scale clarity)
+# -----------------------------------------------------
 fig.add_trace(
     go.Bar(
-        x=df["timestamp"],
-        y=df["Volume"],
+        x=first_df["timestamp"],
+        y=first_df["Volume"],
         name="Volume",
         marker_color="rgba(150,150,150,0.35)"
     ),
@@ -288,46 +236,11 @@ fig.add_trace(
     col=1
 )
 
-# Projection
-if not projection_df.empty:
-    fig.add_trace(
-        go.Scatter(
-            x=projection_df["timestamp"],
-            y=projection_df["Close"],
-            mode="lines",
-            name="Projected Price",
-            line=dict(dash="dash", color="orange")
-        ),
-        row=1,
-        col=1
-    )
-
-
-session_end_ts = df["timestamp"].iloc[-1].to_pydatetime()
-
-# Vertical line (NO annotation here)
-fig.add_vline(
-    x=session_end_ts,
-    line_dash="dot",
-    line_color="gray",
-    row=1,
-    col=1
-)
-
-# Explicit annotation (safe path)
-fig.add_annotation(
-    x=session_end_ts,
-    y=1,
-    yref="paper",
-    text="Session End",
-    showarrow=False,
-    xanchor="left",
-    yanchor="bottom",
-    font=dict(color="gray")
-)
-
+# -----------------------------------------------------
+# Layout
+# -----------------------------------------------------
 fig.update_layout(
-    height=700,
+    height=750,
     hovermode="x unified",
     xaxis=dict(
         range=[session_start, session_end],
@@ -340,15 +253,17 @@ fig.update_layout(
 
 st.plotly_chart(fig, use_container_width=True)
 
+# =====================================================
 # Footer
+# =====================================================
 st.caption(
     "Projection is a simple extrapolation based on recent intraday trends. "
     "Accuracy decreases rapidly with horizon."
 )
 
-# -----------------------------
-# Auto-refresh (only when market is open)
-# -----------------------------
+# =====================================================
+# Auto-refresh (market hours only)
+# =====================================================
 if is_market_open(now_et):
     if "last_refresh" not in st.session_state:
         st.session_state.last_refresh = time.time()
