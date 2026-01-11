@@ -172,10 +172,15 @@ data = {}
 for sym in st.session_state.symbols:
     try:
         df = load_intraday_data(sym)
-        if not df.empty:
-            data[sym] = df
-    except Exception:
-        st.warning(f"Could not load data for {sym}")
+
+        if df.empty:
+            st.warning(f"No data found for {sym}. Invalid or unsupported ticker.")
+            continue
+
+        data[sym] = df
+
+    except Exception as e:
+        st.warning(f"Failed to load {sym}")
 
 if not data:
     st.error("No valid stock data loaded.")
