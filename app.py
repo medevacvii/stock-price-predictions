@@ -186,72 +186,97 @@ now_et = datetime.now(NYSE_TZ)
 # =====================================================
 # Plot Setup
 # =====================================================
-first_df = next(iter(data.values()))
-
-session_start = first_df["timestamp"].iloc[0].replace(
-    hour=9, minute=30, second=0
-)
-session_end = first_df["timestamp"].iloc[0].replace(
-    hour=16, minute=0, second=0
-)
-
-fig = make_subplots(
-    rows=2,
-    cols=1,
-    shared_xaxes=True,
-    vertical_spacing=0.05,
-    row_heights=[0.65, 0.35],
-    subplot_titles=[
-        "Intraday Price",
-        "Volume"
-    ]
-)
-
-# -----------------------------------------------------
-# Price Lines
-# -----------------------------------------------------
 for sym, df in data.items():
+
+    # Anchor session boundaries
+    session_start = df["timestamp"].iloc[0].replace(
+        hour=9, minute=30, second=0
+    )
+    session_end = df["timestamp"].iloc[0].replace(
+        hour=16, minute=0, second=0
+    )
+
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.06,
+        row_heights=[0.65, 0.35],
+        subplot_titles=[
+            f"{sym} — Intraday Price ({session_start:%b %d, %Y})",
+            "Volume"
+        ]
+    )
+
+    # ---- Price line ----
     fig.add_trace(
         go.Scatter(
             x=df["timestamp"],
             y=df["Close"],
             mode="lines",
-            name=sym
+            name="Price",
+            line=dict(width=2)
         ),
         row=1,
         col=1
     )
 
-# -----------------------------------------------------
-# Volume Bars (using first symbol for scale clarity)
-# -----------------------------------------------------
-fig.add_trace(
-    go.Bar(
-        x=first_df["timestamp"],
-        y=first_df["Volume"],
-        name="Volume",
-        marker_color="rgba(150,150,150,0.35)"
-    ),
-    row=2,
-    col=1
-)
+    # ---- Projection (if market open) ----
+    if is_market_open(now_et):
+        mins_left = minutes_until_close(now_et)
+        proj = project_prices(df, mins_left)
 
-# -----------------------------------------------------
-# Layout
-# -----------------------------------------------------
-fig.update_layout(
-    height=750,
-    hovermode="x unified",
-    xaxis=dict(
-        range=[session_start, session_end],
-        tickformat="%H:%M<br>%b %d, %Y"
-    ),
-    yaxis_title="Price ($)",
-    yaxis2_title="Volume",
-    showlegend=True
-)
+        if not proj.empty:
+            fig.add_trace(
+                go.Scatter(
+                    x=proj["timestamp"],
+                    y=proj["Close"],
+                    mode="lines",
+                    name="Projection",
+                    line=dict(dash="dash", color="orange")
+                ),
+                row=1,
+                col=1
+            )
 
-st.plotly_chart(fig, use_container_width=True)
+    # ---- Volume bars ----
+    fig.add_trace(
+        go.Bar(
+            x=df["timestamp"],
+            y=df["Volume"],
+            name="Volume",
+            marker_color="rgba(150,150,150,0.4)"
+        ),
+        row=2,
+        col=1
+    )
+
+    # ---- Session end marker ----
+    session_end_ts = df["timestamp"].iloc[-1].to_pydatetime()
+
+    fig.add_vline(
+        x=session_end_ts,
+        line_dash="dot",
+        line_color="gray",
+        row=1,
+        col=1
+    )
+
+    fig.update_layout(
+        height=650,
+        hovermode="x unified",
+        showlegend=True,
+        xaxis=dict(
+            range=[session_start, session_end],
+            tickformat="%H:%M<br>%b %d, %Y"
+        ),
+        yaxis_title="Price ($)",
+        yaxis2_title="Volume",
+        margin=dict(t=60, b=40)
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
 
 # =====================================================
 # Footer
