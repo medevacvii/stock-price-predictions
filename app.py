@@ -12,7 +12,7 @@ import re
 # =====================================================
 # Configuration
 # =====================================================
-DATA_TTL_SECONDS = 30
+DATA_TTL_SECONDS = 60
 ROLLING_WINDOW = 15
 MAX_SYMBOLS = 5
 
@@ -228,7 +228,9 @@ for sym, df in data.items():
 
     # ---- Projection (if market open) ----
     if is_market_open(now_et):
-        mins_left = minutes_until_close(now_et)
+        mins_left = max(minutes_until_close(now_et), 1)
+
+        # Always recompute projection so it visually updates
         proj = project_prices(df, mins_left)
 
         if not proj.empty:
